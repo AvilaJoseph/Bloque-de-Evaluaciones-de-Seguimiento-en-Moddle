@@ -30,7 +30,6 @@ async function exportFile(format) {
             return;
         }
 
-        // Obtener el botón y guardar su texto original
         const exportBtn = document.getElementById(`export-${format}`);
         if (!exportBtn) {
             showError('Botón de exportación no encontrado');
@@ -45,9 +44,14 @@ async function exportFile(format) {
 
             // Preparar los datos
             const data = allUsers.map(user => ({
+                'ID': user.userid || '',
                 'Nombre': user.firstname || '',
                 'Apellido': user.lastname || '',
+                'Departamento': user.department || '',
                 'Grupo': user.groupname || '',
+                'Quiz ID': user.quizid || '',
+                'Nombre Quiz': user.nombre_quiz || '',
+                'Nombre Curso': user.nombre_curso || '',
                 'Estado': user.estado_completacion || 'pendiente',
                 'Calificación': user.calificacion || '-',
                 'Última Modificación': user.fecha_ultima_modificacion ? 
@@ -68,36 +72,39 @@ async function exportFile(format) {
                     throw new Error('La librería jsPDF no está cargada correctamente');
                 }
                 
-                // Crear nuevo documento PDF
                 const { jsPDF } = window.jspdf;
                 if (!jsPDF) {
                     throw new Error('Constructor jsPDF no disponible');
                 }
                 
                 const doc = new jsPDF({
-                    orientation: "portrait",
+                    orientation: "landscape",
                     unit: "mm",
                     format: "a4"
                 });
 
-                // Título
                 doc.setFont("helvetica");
                 doc.setFontSize(12);
                 doc.text("Reporte de Evaluaciones", 20, 20);
 
-                // Tabla
                 if (typeof doc.autoTable === 'undefined') {
                     throw new Error('Plugin autoTable no está disponible');
                 }
 
                 doc.autoTable({
-                    head: [['Nombre', 'Apellido', 'Grupo', 'Estado', 'Calificación', 'Última Modificación']],
+                    head: [['ID', 'Nombre', 'Apellido', 'Departamento', 'Grupo', 'Quiz ID', 'Nombre Quiz', 
+                           'Nombre Curso', 'Estado', 'Calificación', 'Última Modificación']],
                     body: data.map(item => [
-                        item.Nombre,
-                        item.Apellido,
-                        item.Grupo,
-                        item.Estado,
-                        item.Calificación,
+                        item['ID'],
+                        item['Nombre'],
+                        item['Apellido'],
+                        item['Departamento'],
+                        item['Grupo'],
+                        item['Quiz ID'],
+                        item['Nombre Quiz'],
+                        item['Nombre Curso'],
+                        item['Estado'],
+                        item['Calificación'],
                         item['Última Modificación']
                     ]),
                     startY: 30,
@@ -119,7 +126,6 @@ async function exportFile(format) {
         console.error('Error en exportación:', error);
         showError(`Error al exportar: ${error.message}`);
         
-        // Restaurar el botón en caso de error
         const exportBtn = document.getElementById(`export-${format}`);
         if (exportBtn) {
             exportBtn.innerHTML = btnText;
@@ -140,14 +146,11 @@ function initializeBlock() {
                const courseId = this.dataset.courseid;
                console.log('Course button clicked:', courseId);
                
-               // Actualizar botón activo
                buttons.forEach(btn => btn.classList.remove('active'));
                this.classList.add('active');
                
-               // Mostrar estado de carga
                showLoadingState(courseSummary, loader);
                
-               // Cargar datos en paralelo
                await Promise.all([
                    loadCourseSummary(courseId),
                    loadCourseUsers(courseId)
@@ -222,18 +225,16 @@ async function loadCourseUsers(courseId) {
 function showLoadingState(courseSummary, loader) {
    courseSummary.classList.remove('hidden');
    
-   // Limpiar datos anteriores
    document.getElementById('total-students').textContent = '-';
    document.getElementById('completed-count').textContent = '-';
    document.getElementById('pending-count').textContent = '-';
    document.getElementById('completion-percentage').textContent = '-';
    
-   // Mostrar loader en la tabla
    const tbody = document.getElementById('resultados-body');
    tbody.innerHTML = '';
    const loadingRow = document.createElement('tr');
    loadingRow.innerHTML = `
-       <td colspan="3" class="text-center">
+       <td colspan="11" class="text-center">
            <div class="loader"></div>
            <p>Cargando datos...</p>
        </td>
@@ -252,60 +253,61 @@ function updateSummaryUI(data) {
 }
 
 function updateUsersTableUI(users) {
-   const tbody = document.getElementById('resultados-body');
-   tbody.innerHTML = '';
-   
-   if (!users || !Array.isArray(users) || users.length === 0) {
-       tbody.innerHTML = `
-           <tr>
-               <td colspan="3" class="text-center">No se encontraron usuarios</td>
-           </tr>
-       `;
-       return;
-   }
+    const tbody = document.getElementById('resultados-body');
+    tbody.innerHTML = '';
+    
+    if (!users || !Array.isArray(users) || users.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="11" class="text-center">No se encontraron usuarios</td>
+            </tr>
+        `;
+        return;
+    }
 
-   // Guardar todos los usuarios
-   allUsers = users;
-   
-   // Mostrar solo la cantidad seleccionada
-   const usersToShow = recordsPerPage === 0 ? users : users.slice(0, recordsPerPage);
-   usersToShow.forEach(user => {
-       const tr = document.createElement('tr');
-       
-       const firstName = user.firstname || '';
-       const lastName = user.lastname || '';
-       const status = user.estado_completacion || 'pendiente';
-       const statusClass = (status && typeof status === 'string') ? status.toLowerCase() : 'pendiente';
-       
-       const completionDate = user.fecha_ultima_modificacion 
-           ? new Date(parseInt(user.fecha_ultima_modificacion) * 1000).toLocaleString()
-           : '-';
+    allUsers = users;
+    
+    const usersToShow = recordsPerPage === 0 ? users : users.slice(0, recordsPerPage);
+    usersToShow.forEach(user => {
+        const tr = document.createElement('tr');
+        
+        const status = user.estado_completacion || 'pendiente';
+        const statusClass = status.toLowerCase();
 
-       tr.innerHTML = `
-           <td>${escapeHtml(firstName)} ${escapeHtml(lastName)}</td>
-           <td class="status-${escapeHtml(statusClass)}">
-               ${escapeHtml(status)}
-           </td>
-           <td>${completionDate}</td>
-       `;
-       tbody.appendChild(tr);
-   });
+        // Formatear la fecha si existe
+        const fecha_ultima_modificacion = user.fecha_ultima_modificacion ? 
+            new Date(parseInt(user.fecha_ultima_modificacion) * 1000).toLocaleString() : '-';
 
-   // Agregar información sobre registros mostrados
-   const infoRow = document.createElement('tr');
-   infoRow.innerHTML = `
-       <td colspan="3" class="text-center text-muted">
-           Mostrando ${recordsPerPage === 0 ? users.length : Math.min(recordsPerPage, users.length)} de ${users.length} registros
-       </td>
-   `;
-   tbody.appendChild(infoRow);
+        tr.innerHTML = `
+            <td>${escapeHtml(user.userid)}</td>
+            <td>${escapeHtml(user.firstname)}</td>
+            <td>${escapeHtml(user.lastname)}</td>
+            <td>${escapeHtml(user.department || '')}</td>
+            <td>${escapeHtml(user.groupname || '')}</td>
+            <td>${escapeHtml(user.quizid)}</td>
+            <td>${escapeHtml(user.nombre_quiz)}</td>
+            <td>${escapeHtml(user.nombre_curso)}</td>
+            <td class="status-${statusClass}">${escapeHtml(status)}</td>
+            <td>${escapeHtml(user.calificacion || '-')}</td>
+            <td>${fecha_ultima_modificacion}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    const infoRow = document.createElement('tr');
+    infoRow.innerHTML = `
+        <td colspan="11" class="text-center text-muted">
+            Mostrando ${recordsPerPage === 0 ? users.length : Math.min(recordsPerPage, users.length)} de ${users.length} registros
+        </td>
+    `;
+    tbody.appendChild(infoRow);
 }
 
 function showTableError(message) {
    const tbody = document.getElementById('resultados-body');
    tbody.innerHTML = `
        <tr>
-           <td colspan="3" class="error-message text-center">
+           <td colspan="11" class="error-message text-center">
                ${escapeHtml(message)}
            </td>
        </tr>
