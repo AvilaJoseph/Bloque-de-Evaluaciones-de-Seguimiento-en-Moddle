@@ -90,21 +90,14 @@ class block_evaluaciones_seguimiento extends block_base {
                 </select>
             </div>';
                     
-        // Tabla de resultados
-        // Modificar la sección de la tabla en el contenido
-        $this->content->text .= '
-        <div class="resultados-table">
+        // Tabla de resultados - ESTA ES LA PARTE QUE CAMBIA
+        $this->content->text .= '<div class="resultados-table">
             <table>
                 <thead>
                     <tr>
-                        <th>ID</th>
                         <th>Nombre</th>
                         <th>Apellido</th>
-                        <th>Departamento</th>
-                        <th>Grupo</th>
-                        <th>Quiz ID</th>
                         <th>Nombre Quiz</th>
-                        <th>Nombre Curso</th>
                         <th>Estado</th>
                         <th>Calificación</th>
                         <th>Última Modificación</th>
@@ -127,4 +120,4 @@ class block_evaluaciones_seguimiento extends block_base {
 
         return $this->content;
     }
-}
+}   

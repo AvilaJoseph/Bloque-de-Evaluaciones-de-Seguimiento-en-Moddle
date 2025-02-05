@@ -38,20 +38,14 @@ async function exportFile(format) {
         const btnText = exportBtn.innerHTML;
 
         try {
-            // Mostrar estado de carga
             exportBtn.innerHTML = '<span class="loader-small"></span> Exportando...';
             exportBtn.disabled = true;
 
-            // Preparar los datos
+            // Preparar los datos con el nuevo orden y solo las columnas necesarias
             const data = allUsers.map(user => ({
-                'ID': user.userid || '',
                 'Nombre': user.firstname || '',
                 'Apellido': user.lastname || '',
-                'Departamento': user.department || '',
-                'Grupo': user.groupname || '',
-                'Quiz ID': user.quizid || '',
                 'Nombre Quiz': user.nombre_quiz || '',
-                'Nombre Curso': user.nombre_curso || '',
                 'Estado': user.estado_completacion || 'pendiente',
                 'Calificación': user.calificacion || '-',
                 'Última Modificación': user.fecha_ultima_modificacion ? 
@@ -92,17 +86,12 @@ async function exportFile(format) {
                 }
 
                 doc.autoTable({
-                    head: [['ID', 'Nombre', 'Apellido', 'Departamento', 'Grupo', 'Quiz ID', 'Nombre Quiz', 
-                           'Nombre Curso', 'Estado', 'Calificación', 'Última Modificación']],
+                    head: [['Nombre', 'Apellido', 'Nombre Quiz', 'Estado', 
+                           'Calificación', 'Última Modificación']],
                     body: data.map(item => [
-                        item['ID'],
                         item['Nombre'],
                         item['Apellido'],
-                        item['Departamento'],
-                        item['Grupo'],
-                        item['Quiz ID'],
                         item['Nombre Quiz'],
-                        item['Nombre Curso'],
                         item['Estado'],
                         item['Calificación'],
                         item['Última Modificación']
@@ -117,7 +106,6 @@ async function exportFile(format) {
                 doc.save("evaluaciones.pdf");
             }
         } finally {
-            // Restaurar el botón
             exportBtn.innerHTML = btnText;
             exportBtn.disabled = false;
         }
@@ -234,7 +222,7 @@ function showLoadingState(courseSummary, loader) {
    tbody.innerHTML = '';
    const loadingRow = document.createElement('tr');
    loadingRow.innerHTML = `
-       <td colspan="11" class="text-center">
+       <td colspan="6" class="text-center">
            <div class="loader"></div>
            <p>Cargando datos...</p>
        </td>
@@ -259,7 +247,7 @@ function updateUsersTableUI(users) {
     if (!users || !Array.isArray(users) || users.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="11" class="text-center">No se encontraron usuarios</td>
+                <td colspan="6" class="text-center">No se encontraron usuarios</td>
             </tr>
         `;
         return;
@@ -279,14 +267,9 @@ function updateUsersTableUI(users) {
             new Date(parseInt(user.fecha_ultima_modificacion) * 1000).toLocaleString() : '-';
 
         tr.innerHTML = `
-            <td>${escapeHtml(user.userid)}</td>
-            <td>${escapeHtml(user.firstname)}</td>
-            <td>${escapeHtml(user.lastname)}</td>
-            <td>${escapeHtml(user.department || '')}</td>
-            <td>${escapeHtml(user.groupname || '')}</td>
-            <td>${escapeHtml(user.quizid)}</td>
-            <td>${escapeHtml(user.nombre_quiz)}</td>
-            <td>${escapeHtml(user.nombre_curso)}</td>
+            <td>${escapeHtml(user.firstname || '')}</td>
+            <td>${escapeHtml(user.lastname || '')}</td>
+            <td>${escapeHtml(user.nombre_quiz || '')}</td>
             <td class="status-${statusClass}">${escapeHtml(status)}</td>
             <td>${escapeHtml(user.calificacion || '-')}</td>
             <td>${fecha_ultima_modificacion}</td>
@@ -296,7 +279,7 @@ function updateUsersTableUI(users) {
 
     const infoRow = document.createElement('tr');
     infoRow.innerHTML = `
-        <td colspan="11" class="text-center text-muted">
+        <td colspan="6" class="text-center text-muted">
             Mostrando ${recordsPerPage === 0 ? users.length : Math.min(recordsPerPage, users.length)} de ${users.length} registros
         </td>
     `;
@@ -307,7 +290,7 @@ function showTableError(message) {
    const tbody = document.getElementById('resultados-body');
    tbody.innerHTML = `
        <tr>
-           <td colspan="11" class="error-message text-center">
+           <td colspan="6" class="error-message text-center">
                ${escapeHtml(message)}
            </td>
        </tr>
