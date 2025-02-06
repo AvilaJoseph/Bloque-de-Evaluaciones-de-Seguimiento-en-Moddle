@@ -19,12 +19,13 @@ class block_evaluaciones_seguimiento extends block_base {
         $this->page->requires->js(new moodle_url('/blocks/evaluaciones_seguimiento/script.js'));
 
         $sql = "SELECT c.id, c.fullname 
-                FROM {course} c
-                JOIN {enrol} e ON c.id = e.courseid
-                JOIN {user_enrolments} ue ON e.id = ue.enrolid
-                WHERE c.visible = 1
-                GROUP BY c.id, c.fullname
-                ORDER BY c.fullname";
+            FROM {course} c
+            JOIN {enrol} e ON c.id = e.courseid
+            JOIN {user_enrolments} ue ON e.id = ue.enrolid
+            WHERE c.visible = 1 
+            AND c.fullname NOT LIKE '%Certificación%'
+            GROUP BY c.id, c.fullname
+            ORDER BY c.fullname";
         
         $courses = $DB->get_records_sql($sql);
 

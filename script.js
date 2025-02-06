@@ -42,12 +42,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function exportFile(format) {
     try {
-        const activeCourseBtn = document.querySelector('.curso-btn.active');
-        if (!activeCourseBtn) {
-            showError('Por favor, seleccione un curso primero');
-            return;
-        }
-
         const exportBtn = document.getElementById(`export-${format}`);
         if (!exportBtn) {
             showError('Botón de exportación no encontrado');
@@ -59,8 +53,7 @@ async function exportFile(format) {
         exportBtn.disabled = true;
 
         try {
-            const courseId = activeCourseBtn.dataset.courseid;
-            window.location.href = `/moddle/blocks/evaluaciones_seguimiento/export.php?format=${format}&courseid=${courseId}`;
+            window.location.href = `/moddle/blocks/evaluaciones_seguimiento/export.php?format=${format}`;
         } finally {
             setTimeout(() => {
                 exportBtn.innerHTML = btnText;
