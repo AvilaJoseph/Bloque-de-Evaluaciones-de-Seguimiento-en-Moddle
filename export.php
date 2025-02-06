@@ -69,11 +69,10 @@ try {
             ue.status = 0  
             AND c.id = :courseid
             AND u.deleted = 0
-            AND (
-                (LOWER(q.name) LIKE '%inducción%' AND u.department = 'PLANTA')
-                OR 
-                (LOWER(q.name) LIKE '%reinducción%' AND u.department = 'CONTRATISTA')
-            )
+            AND CASE 
+                WHEN q.name LIKE '%Reinducción%' THEN u.department = 'CONTRATISTA'
+                WHEN q.name LIKE '%Inducción%' THEN u.department = 'PLANTA'
+            END
         ORDER BY u.lastname, u.firstname";
 
         $params = array(
