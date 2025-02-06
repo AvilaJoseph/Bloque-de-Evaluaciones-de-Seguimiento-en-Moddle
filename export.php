@@ -99,48 +99,70 @@ try {
         $pdf->setPrintFooter(false);
         $pdf->SetCreator('Moodle');
         $pdf->SetTitle('Evaluaciones - Todos los cursos');
-
+    
         foreach ($all_course_results as $course_name => $course_data) {
-            // Título del curso
             $pdf->AddPage('L');
-            $pdf->SetFont('helvetica', 'B', 14);
-            $pdf->Cell(0, 10, $course_name, 0, 1, 'C');
+            $pdf->SetFont('helvetica', 'B', 16);
+            $pdf->SetFillColor(51, 122, 183); // Azul
+            $pdf->SetTextColor(255, 255, 255); // Texto blanco
+            $pdf->Cell(0, 10, $course_name, 1, 1, 'C', true);
             
-            // Por cada tipo de usuario (PLANTA/CONTRATISTA)
             foreach ($course_data as $user_type => $evaluaciones) {
-                $pdf->AddPage('L');
-                $pdf->SetFont('helvetica', 'B', 12);
-                $pdf->Cell(0, 10, "Grupo: " . $user_type, 0, 1, 'C');
+                $pdf->SetFont('helvetica', 'B', 14);
+                $pdf->SetFillColor(92, 184, 92); // Verde
+                $pdf->SetTextColor(255, 255, 255);
+                $pdf->Ln(5);
+                $pdf->Cell(0, 8, "Grupo: " . $user_type, 1, 1, 'C', true);
                 
                 foreach ($evaluaciones as $quiz_name => $quiz_results) {
-                    $pdf->Ln(5);
-                    $pdf->SetFont('helvetica', 'B', 10);
-                    $pdf->Cell(0, 10, $quiz_name, 0, 1, 'L');
+                    $pdf->SetFont('helvetica', 'B', 12);
+                    $pdf->SetFillColor(240, 240, 240); // Gris claro
+                    $pdf->SetTextColor(51, 51, 51); // Texto oscuro
+                    $pdf->Ln(3);
+                    $pdf->Cell(0, 8, $quiz_name, 1, 1, 'L', true);
                     
+                    // Headers
                     $w = array(35, 35, 25, 25, 35, 35);
                     $headers = array('Nombre', 'Apellido', 'Grupo', 'Estado', 'Calificación', 'Fecha');
                     
-                    $pdf->SetFillColor(230, 230, 230);
-                    $pdf->SetFont('helvetica', 'B', 8);
+                    $pdf->SetFillColor(217, 237, 247); // Azul claro
+                    $pdf->SetFont('helvetica', 'B', 9);
                     
                     foreach($headers as $i => $header) {
                         $pdf->Cell($w[$i], 7, $header, 1, 0, 'C', true);
                     }
                     $pdf->Ln();
                     
-                    $pdf->SetFont('helvetica', '', 8);
+                    // Datos
+                    $pdf->SetFont('helvetica', '', 9);
+                    $pdf->SetFillColor(255, 255, 255);
+                    $pdf->SetTextColor(51, 51, 51);
+                    
+                    $fill = false;
                     foreach ($quiz_results as $row) {
                         $fecha = date('d/m/Y H:i', $row->fecha_ultima_modificacion);
                         
-                        $pdf->Cell($w[0], 6, $row->firstname, 1);
-                        $pdf->Cell($w[1], 6, $row->lastname, 1);
-                        $pdf->Cell($w[2], 6, $row->grupo, 1);
-                        $pdf->Cell($w[3], 6, $row->estado_completacion, 1);
-                        $pdf->Cell($w[4], 6, $row->calificacion, 1);
-                        $pdf->Cell($w[5], 6, $fecha, 1);
+                        $fill = !$fill;
+                        $fillColor = $fill ? array(249, 249, 249) : array(255, 255, 255);
+                        $pdf->SetFillColor($fillColor[0], $fillColor[1], $fillColor[2]);
+                        
+                        $pdf->Cell($w[0], 6, $row->firstname, 1, 0, 'L', true);
+                        $pdf->Cell($w[1], 6, $row->lastname, 1, 0, 'L', true);
+                        $pdf->Cell($w[2], 6, $row->grupo, 1, 0, 'C', true);
+                        
+                        // Color para el estado
+                        $estadoColor = $row->estado_completacion === 'completado' ? 
+                            array(92, 184, 92) : array(217, 83, 79);
+                        $pdf->SetTextColor($estadoColor[0], $estadoColor[1], $estadoColor[2]);
+                        $pdf->Cell($w[3], 6, $row->estado_completacion, 1, 0, 'C', true);
+                        $pdf->SetTextColor(51, 51, 51);
+                        
+                        $pdf->Cell($w[4], 6, $row->calificacion, 1, 0, 'C', true);
+                        $pdf->Cell($w[5], 6, $fecha, 1, 0, 'C', true);
                         $pdf->Ln();
                     }
                     
+                    // Resumen
                     $total = count($quiz_results);
                     $completados = count(array_filter($quiz_results, function($r) { 
                         return $r->estado_completacion === 'completado'; 
@@ -148,21 +170,22 @@ try {
                     $pendientes = $total - $completados;
                     
                     $pdf->Ln(2);
-                    $pdf->SetFont('helvetica', 'B', 8);
-                    $pdf->Cell(0, 6, "Resumen: Total: $total, Completados: $completados, Pendientes: $pendientes", 0, 1, 'L');
-                    $pdf->Ln(5);
+                    $pdf->SetFont('helvetica', 'B', 9);
+                    $pdf->SetFillColor(217, 237, 247);
+                    $pdf->Cell(0, 6, "Resumen: Total: $total, Completados: $completados, Pendientes: $pendientes", 1, 1, 'L', true);
+                    $pdf->Ln(3);
                 }
             }
         }
         
-        $pdf->Output('evaluaciones_todos_cursos.pdf', 'D');
+        $pdf->Output('Informe_General_Evaluaciones.pdf', 'D');
         exit;
 
     } elseif ($format === 'excel') {
         require_once($CFG->libdir . '/excellib.class.php');
         
-        $workbook = new MoodleExcelWorkbook('evaluaciones_todos_cursos.xlsx');
-        $workbook->send('evaluaciones_todos_cursos.xlsx');
+        $workbook = new MoodleExcelWorkbook('Informe_General_Evaluaciones.xlsx');
+        $workbook->send('Informe_General_Evaluaciones.xlsx');
         
         foreach ($all_course_results as $course_name => $course_data) {
             $safe_sheet_name = clean_filename(substr($course_name, 0, 25));
