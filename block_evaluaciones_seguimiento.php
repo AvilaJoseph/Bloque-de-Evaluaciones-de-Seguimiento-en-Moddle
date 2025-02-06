@@ -15,11 +15,9 @@ class block_evaluaciones_seguimiento extends block_base {
 
         $this->content = new stdClass;
 
-        // Agregar los estilos y JavaScript
         $this->page->requires->css(new moodle_url('/blocks/evaluaciones_seguimiento/styles.css'));
         $this->page->requires->js(new moodle_url('/blocks/evaluaciones_seguimiento/script.js'));
 
-        // Obtener cursos disponibles
         $sql = "SELECT c.id, c.fullname 
                 FROM {course} c
                 JOIN {enrol} e ON c.id = e.courseid
@@ -30,7 +28,6 @@ class block_evaluaciones_seguimiento extends block_base {
         
         $courses = $DB->get_records_sql($sql);
 
-        // Contenedor principal
         $this->content->text = '<div id="evaluaciones-container">';
         
         // Botones de cursos
@@ -44,7 +41,7 @@ class block_evaluaciones_seguimiento extends block_base {
         }
         $this->content->text .= '</div>';
 
-        // Resumen del curso seleccionado
+        // Resumen
         $this->content->text .= '
         <div id="course-summary" class="course-summary hidden">
             <div class="stats-grid">
@@ -61,13 +58,26 @@ class block_evaluaciones_seguimiento extends block_base {
                     <span class="stat-value" id="pending-count">-</span>
                 </div>
                 <div class="stat-box">
-                    <span class="stat-label">% Completado</span>
+                <span class="stat-label">% Completado</span>
                     <span class="stat-value" id="completion-percentage">-</span>
                 </div>
             </div>
         </div>';
 
-        // Controles de exportación
+        // Filtros
+        $this->content->text .= '
+        <div class="filter-controls mb-3">
+            <select id="filter-quiz" class="form-select me-2">
+                <option value="">Todas las evaluaciones</option>
+            </select>
+            <select id="filter-status" class="form-select">
+                <option value="">Todos los estados</option>
+                <option value="completado">Completado</option>
+                <option value="pendiente">Pendiente</option>
+            </select>
+        </div>';
+
+        // Botones de exportación
         $this->content->text .= '
             <div class="export-controls mb-3">
                 <button id="export-excel" class="btn btn-secondary">
@@ -78,7 +88,7 @@ class block_evaluaciones_seguimiento extends block_base {
                 </button>
             </div>';
 
-        // Controles de tabla
+        // Control de registros por página
         $this->content->text .= '
             <div class="table-controls mb-3">
                 <select id="records-per-page" class="form-select" style="width: auto;">
@@ -90,34 +100,33 @@ class block_evaluaciones_seguimiento extends block_base {
                 </select>
             </div>';
                     
-        // Tabla de resultados - ESTA ES LA PARTE QUE CAMBIA
+        // Tabla de resultados
         $this->content->text .= '<div class="resultados-table">
             <table>
                 <thead>
                     <tr>
                         <th>Nombre</th>
                         <th>Apellido</th>
-                        <th>Nombre Quiz</th>
+                        <th>Grupo</th>
                         <th>Estado</th>
                         <th>Calificación</th>
                         <th>Última Modificación</th>
                     </tr>
                 </thead>
                 <tbody id="resultados-body">
-                    <!-- Los resultados se cargarán dinámicamente -->
                 </tbody>
             </table>
         </div>';
         
         $this->content->text .= '</div>';
 
-        // Agregar los scripts al final
+        // Scripts externos
         $this->content->text .= '
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
         ';
 
         return $this->content;
     }
-}   
+}

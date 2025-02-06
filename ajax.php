@@ -11,63 +11,139 @@ header('Content-Type: application/json; charset=utf-8');
 
 try {
     $action = required_param('action', PARAM_ALPHA);
+    $evaluacion_tipo = optional_param('eval_tipo', '', PARAM_TEXT);
     $response = array('success' => true, 'data' => array());
 
     switch($action) {
+        case 'evaluaciones':  // Cambiado de 'get_evaluaciones' a 'evaluaciones'
+            try {
+                $sql = "SELECT DISTINCT q.name
+                        FROM {quiz} q
+                        JOIN {course} c ON q.course = c.id
+                        WHERE c.id = :courseid
+                        AND (
+                            (LOWER(q.name) LIKE 'evaluación de inducción%')
+                            OR 
+                            (LOWER(q.name) LIKE 'evaluación de reinducción%')
+                        )
+                        ORDER BY q.name ASC";
+                
+                $params = array('courseid' => $courseid);
+                $results = $DB->get_records_sql($sql, $params);
+                
+                if ($results === false) {
+                    throw new Exception('Error al obtener evaluaciones');
+                }
+                
+                $response['data'] = array_values($results);
+                
+            } catch (dml_exception $e) {
+                debugging("DML Error: " . $e->getMessage());
+                throw new Exception('Error al leer evaluaciones: ' . $e->getMessage());
+            }
+            break;
+
         case 'users':
             try {
-                $sql = "SELECT 
-                    u.firstname, 
-                    u.lastname, 
-                    u.department AS grupo, 
-                    q.name AS nombre_quiz,
-                    CASE 
-                        WHEN qa.state = 'finished' AND qa.sumgrades IS NOT NULL THEN 'completado' 
-                        ELSE 'pendiente' 
-                    END AS estado_completacion,
-                    CASE 
-                        WHEN qa.state = 'finished' AND qa.sumgrades IS NOT NULL THEN 
-                            CONCAT(ROUND((qa.sumgrades / q.grade) * 10, 2), '/10.00 (', ROUND((qa.sumgrades / q.grade) * 100, 2), '%)') 
-                        ELSE '-' 
-                    END AS calificacion,
-                    COALESCE(qa.timefinish, ue.timemodified) AS fecha_ultima_modificacion
-                FROM {user} u
-                JOIN {user_enrolments} ue ON u.id = ue.userid
-                JOIN {enrol} e ON ue.enrolid = e.id
-                JOIN {course} c ON e.courseid = c.id
-                JOIN {quiz} q ON q.course = c.id
-                LEFT JOIN (
-                    SELECT 
-                        userid,
-                        quiz,
-                        state,
-                        sumgrades,
-                        timefinish
-                    FROM {quiz_attempts} qa1
-                    WHERE attempt = (
-                        SELECT MAX(attempt)
-                        FROM {quiz_attempts} qa2
-                        WHERE qa2.userid = qa1.userid 
-                        AND qa2.quiz = qa1.quiz
-                    )
-                ) qa ON qa.userid = u.id AND qa.quiz = q.id
-                WHERE 
-                    ue.status = 0  
-                    AND c.id = :courseid
-                    AND (
-                        (u.department = 'PLANTA' AND LOWER(q.name) LIKE 'evaluación de inducción%')
-                        OR 
-                        (u.department = 'CONTRATISTA' AND LOWER(q.name) LIKE 'evaluación de reinducción%')
-                    )
-                    AND u.deleted = 0
-                ORDER BY 
-                    nombre_quiz,
-                    u.lastname,
-                    u.firstname";
+                if ($courseid == 3 && !empty($evaluacion_tipo)) {
+                    // Consulta específica para el curso de Talento Humano cuando se selecciona una evaluación
+                    $sql = "SELECT 
+                        u.firstname, 
+                        u.lastname, 
+                        u.department AS grupo, 
+                        q.name AS nombre_quiz,
+                        CASE 
+                            WHEN qa.state = 'finished' AND qa.sumgrades IS NOT NULL THEN 'completado' 
+                            ELSE 'pendiente' 
+                        END AS estado_completacion,
+                        CASE 
+                            WHEN qa.state = 'finished' AND qa.sumgrades IS NOT NULL THEN 
+                                CONCAT(ROUND((qa.sumgrades / q.grade) * 10, 2), '/10.00 (', ROUND((qa.sumgrades / q.grade) * 100, 2), '%)') 
+                            ELSE '-' 
+                        END AS calificacion,
+                        COALESCE(qa.timefinish, ue.timemodified) AS fecha_ultima_modificacion
+                    FROM {user} u
+                    JOIN {user_enrolments} ue ON u.id = ue.userid
+                    JOIN {enrol} e ON ue.enrolid = e.id
+                    JOIN {course} c ON e.courseid = c.id
+                    JOIN {quiz} q ON q.course = c.id
+                    LEFT JOIN (
+                        SELECT 
+                            userid,
+                            quiz,
+                            state,
+                            sumgrades,
+                            timefinish
+                        FROM {quiz_attempts} qa1
+                        WHERE attempt = (
+                            SELECT MAX(attempt)
+                            FROM {quiz_attempts} qa2
+                            WHERE qa2.userid = qa1.userid 
+                            AND qa2.quiz = qa1.quiz
+                        )
+                    ) qa ON qa.userid = u.id AND qa.quiz = q.id
+                    WHERE 
+                        ue.status = 0  
+                        AND c.id = :courseid
+                        AND u.deleted = 0
+                        AND q.name = :eval_tipo";
 
-                $params = array('courseid' => $courseid);
+                    $params = array(
+                        'courseid' => $courseid,
+                        'eval_tipo' => $evaluacion_tipo
+                    );
+                } else {
+                    // Consulta original para otros casos
+                    $sql = "SELECT 
+                        u.firstname, 
+                        u.lastname, 
+                        u.department AS grupo, 
+                        q.name AS nombre_quiz,
+                        CASE 
+                            WHEN qa.state = 'finished' AND qa.sumgrades IS NOT NULL THEN 'completado' 
+                            ELSE 'pendiente' 
+                        END AS estado_completacion,
+                        CASE 
+                            WHEN qa.state = 'finished' AND qa.sumgrades IS NOT NULL THEN 
+                                CONCAT(ROUND((qa.sumgrades / q.grade) * 10, 2), '/10.00 (', ROUND((qa.sumgrades / q.grade) * 100, 2), '%)') 
+                            ELSE '-' 
+                        END AS calificacion,
+                        COALESCE(qa.timefinish, ue.timemodified) AS fecha_ultima_modificacion
+                    FROM {user} u
+                    JOIN {user_enrolments} ue ON u.id = ue.userid
+                    JOIN {enrol} e ON ue.enrolid = e.id
+                    JOIN {course} c ON e.courseid = c.id
+                    JOIN {quiz} q ON q.course = c.id
+                    LEFT JOIN (
+                        SELECT 
+                            userid,
+                            quiz,
+                            state,
+                            sumgrades,
+                            timefinish
+                        FROM {quiz_attempts} qa1
+                        WHERE attempt = (
+                            SELECT MAX(attempt)
+                            FROM {quiz_attempts} qa2
+                            WHERE qa2.userid = qa1.userid 
+                            AND qa2.quiz = qa1.quiz
+                        )
+                    ) qa ON qa.userid = u.id AND qa.quiz = q.id
+                    WHERE 
+                        ue.status = 0  
+                        AND c.id = :courseid
+                        AND u.deleted = 0
+                        AND (
+                            (u.department = 'PLANTA' AND LOWER(q.name) LIKE 'evaluación de inducción%')
+                            OR 
+                            (u.department = 'CONTRATISTA' AND LOWER(q.name) LIKE 'evaluación de reinducción%')
+                        )";
+
+                    $params = array('courseid' => $courseid);
+                }
+
+                $sql .= " ORDER BY nombre_quiz, u.lastname, u.firstname";
                 
-                // Debug info
                 debugging("SQL Query: " . $sql);
                 debugging("Parameters: " . json_encode($params));
                 
@@ -77,16 +153,13 @@ try {
                     throw new Exception('Error al obtener registros');
                 }
                 
-                debugging("Results: " . print_r($results, true));
+                debugging("Results count: " . count($results));
                 
                 $response['data'] = array_values($results);
                 
             } catch (dml_exception $e) {
                 debugging("DML Error: " . $e->getMessage());
                 throw new Exception('Error al leer de la base de datos: ' . $e->getMessage());
-            } catch (Exception $e) {
-                debugging("General Error: " . $e->getMessage());
-                throw new Exception('Error general: ' . $e->getMessage());
             }
             break;
 
@@ -128,16 +201,20 @@ try {
                 WHERE 
                     e.courseid = :courseid
                     AND u.deleted = 0
-                    AND ue.status = 0
-                    AND (
+                    AND ue.status = 0";
+
+                $params = array('courseid' => $courseid);
+
+                if ($courseid == 3 && !empty($evaluacion_tipo)) {
+                    $sql .= " AND q.name = :eval_tipo";
+                    $params['eval_tipo'] = $evaluacion_tipo;
+                } else {
+                    $sql .= " AND (
                         (u.department = 'PLANTA' AND LOWER(q.name) LIKE 'evaluación de inducción%')
                         OR 
                         (u.department = 'CONTRATISTA' AND LOWER(q.name) LIKE 'evaluación de reinducción%')
                     )";
-                
-                $params = [
-                    'courseid' => $courseid
-                ];
+                }
                 
                 $result = $DB->get_record_sql($sql, $params);
                 
@@ -147,11 +224,7 @@ try {
 
                 $response['data'] = $result;
             } catch (dml_exception $e) {
-                debugging("DML Error: " . $e->getMessage());
                 throw new Exception('Error al leer de la base de datos: ' . $e->getMessage());
-            } catch (Exception $e) {
-                debugging("General Error: " . $e->getMessage());
-                throw new Exception('Error general: ' . $e->getMessage());
             }
             break;
 
