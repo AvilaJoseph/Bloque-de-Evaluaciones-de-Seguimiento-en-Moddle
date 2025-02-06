@@ -1,25 +1,43 @@
-// Variables globales para manejar la paginación
+// Variables globales
 let allUsers = [];
 let recordsPerPage = 10;
+let currentCourseId = null;
 
 document.addEventListener('DOMContentLoaded', function() {
-   console.log('Script initialized');
-   initializeBlock();
-   
-   // Agregar listener para el cambio de registros por página
-   document.getElementById('records-per-page').addEventListener('change', function(e) {
-       recordsPerPage = parseInt(e.target.value);
-       updateUsersTableUI(allUsers);
-   });
+    console.log('Script initialized');
+    initializeBlock();
+    
+    // Agregar listener para el cambio de registros por página
+    document.getElementById('records-per-page').addEventListener('change', function(e) {
+        recordsPerPage = parseInt(e.target.value);
+        updateUsersTableUI(allUsers);
+    });
 
-   // Add export button listeners
-   document.getElementById('export-excel').addEventListener('click', async function() {
-       await exportFile('excel');
-   });
+    // Agregar listener para el filtro de evaluaciones
+    document.getElementById('filter-quiz').addEventListener('change', async function(e) {
+        const evaluacionTipo = e.target.value;
+        if (currentCourseId) {
+            showLoadingState();
+            await Promise.all([
+                loadCourseSummary(currentCourseId, evaluacionTipo),
+                loadCourseUsers(currentCourseId, evaluacionTipo)
+            ]);
+        }
+    });
 
-   document.getElementById('export-pdf').addEventListener('click', async function() {
-       await exportFile('pdf');
-   });
+    // Agregar listener para el filtro de estado
+    document.getElementById('filter-status').addEventListener('change', function(e) {
+        filterByStatus(e.target.value);
+    });
+
+    // Add export button listeners
+    document.getElementById('export-excel').addEventListener('click', async function() {
+        await exportFile('excel');
+    });
+
+    document.getElementById('export-pdf').addEventListener('click', async function() {
+        await exportFile('pdf');
+    });
 });
 
 async function exportFile(format) {
@@ -35,81 +53,20 @@ async function exportFile(format) {
             showError('Botón de exportación no encontrado');
             return;
         }
+
         const btnText = exportBtn.innerHTML;
+        exportBtn.innerHTML = '<span class="loader-small"></span> Exportando...';
+        exportBtn.disabled = true;
 
         try {
-            exportBtn.innerHTML = '<span class="loader-small"></span> Exportando...';
-            exportBtn.disabled = true;
-
-            // Preparar los datos con el nuevo orden y solo las columnas necesarias
-            const data = allUsers.map(user => ({
-                'Nombre': user.firstname || '',
-                'Apellido': user.lastname || '',
-                'Nombre Quiz': user.nombre_quiz || '',
-                'Estado': user.estado_completacion || 'pendiente',
-                'Calificación': user.calificacion || '-',
-                'Última Modificación': user.fecha_ultima_modificacion ? 
-                    new Date(parseInt(user.fecha_ultima_modificacion) * 1000).toLocaleString() : '-'
-            }));
-
-            if (format === 'excel') {
-                if (typeof XLSX === 'undefined') {
-                    throw new Error('La librería XLSX no está cargada correctamente');
-                }
-                const ws = XLSX.utils.json_to_sheet(data);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Evaluaciones");
-                XLSX.writeFile(wb, "evaluaciones.xlsx");
-            } 
-            else if (format === 'pdf') {
-                if (typeof window.jspdf === 'undefined') {
-                    throw new Error('La librería jsPDF no está cargada correctamente');
-                }
-                
-                const { jsPDF } = window.jspdf;
-                if (!jsPDF) {
-                    throw new Error('Constructor jsPDF no disponible');
-                }
-                
-                const doc = new jsPDF({
-                    orientation: "landscape",
-                    unit: "mm",
-                    format: "a4"
-                });
-
-                doc.setFont("helvetica");
-                doc.setFontSize(12);
-                doc.text("Reporte de Evaluaciones", 20, 20);
-
-                if (typeof doc.autoTable === 'undefined') {
-                    throw new Error('Plugin autoTable no está disponible');
-                }
-
-                doc.autoTable({
-                    head: [['Nombre', 'Apellido', 'Nombre Quiz', 'Estado', 
-                           'Calificación', 'Última Modificación']],
-                    body: data.map(item => [
-                        item['Nombre'],
-                        item['Apellido'],
-                        item['Nombre Quiz'],
-                        item['Estado'],
-                        item['Calificación'],
-                        item['Última Modificación']
-                    ]),
-                    startY: 30,
-                    margin: { top: 20 },
-                    styles: { fontSize: 8, cellPadding: 2 },
-                    headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-                    alternateRowStyles: { fillColor: [245, 245, 245] }
-                });
-
-                doc.save("evaluaciones.pdf");
-            }
+            const courseId = activeCourseBtn.dataset.courseid;
+            window.location.href = `/moddle/blocks/evaluaciones_seguimiento/export.php?format=${format}&courseid=${courseId}`;
         } finally {
-            exportBtn.innerHTML = btnText;
-            exportBtn.disabled = false;
+            setTimeout(() => {
+                exportBtn.innerHTML = btnText;
+                exportBtn.disabled = false;
+            }, 2000);
         }
-
     } catch (error) {
         console.error('Error en exportación:', error);
         showError(`Error al exportar: ${error.message}`);
@@ -123,121 +80,178 @@ async function exportFile(format) {
 }
 
 function initializeBlock() {
-   const buttons = document.querySelectorAll('.curso-btn');
-   const courseSummary = document.getElementById('course-summary');
-   const loader = document.createElement('div');
-   loader.className = 'loader';
-   
-   buttons.forEach(button => {
-       button.addEventListener('click', async function() {
-           try {
-               const courseId = this.dataset.courseid;
-               console.log('Course button clicked:', courseId);
-               
-               buttons.forEach(btn => btn.classList.remove('active'));
-               this.classList.add('active');
-               
-               showLoadingState(courseSummary, loader);
-               
-               await Promise.all([
-                   loadCourseSummary(courseId),
-                   loadCourseUsers(courseId)
-               ]);
-           } catch (error) {
-               console.error('Error in button click handler:', error);
-               showError('Error al cargar los datos del curso');
-           }
-       });
-   });
+    const buttons = document.querySelectorAll('.curso-btn');
+    
+    buttons.forEach(button => {
+        button.addEventListener('click', async function() {
+            try {
+                currentCourseId = this.dataset.courseid;
+                console.log('Course button clicked:', currentCourseId);
+                
+                buttons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                
+                showLoadingState();
+                
+                // Cargar evaluaciones disponibles
+                await loadEvaluaciones(currentCourseId);
+                
+                // Cargar datos iniciales
+                await Promise.all([
+                    loadCourseSummary(currentCourseId),
+                    loadCourseUsers(currentCourseId)
+                ]);
+            } catch (error) {
+                console.error('Error in button click handler:', error);
+                showError('Error al cargar los datos del curso');
+            }
+        });
+    });
 }
 
-async function loadCourseSummary(courseId) {
-   try {
-       const response = await fetch(`/moddle/blocks/evaluaciones_seguimiento/ajax.php?action=summary&courseid=${courseId}`, {
-           method: 'GET',
-           credentials: 'same-origin',
-           headers: {
-               'Accept': 'application/json',
-               'Cache-Control': 'no-cache'
-           }
-       });
+async function loadEvaluaciones(courseId) {
+    try {
+        const response = await fetch(`/moddle/blocks/evaluaciones_seguimiento/ajax.php?action=evaluaciones&courseid=${courseId}`, {  // Cambiado de 'get_evaluaciones' a 'evaluaciones'
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache'
+            }
+        });
 
-       if (!response.ok) {
-           throw new Error(`HTTP error! status: ${response.status}`);
-       }
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
 
-       const data = await response.json();
-       if (!data.success) {
-           throw new Error(data.error || 'Error desconocido');
-       }
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || 'Error desconocido');
+        }
 
-       updateSummaryUI(data.data);
-   } catch (error) {
-       console.error('Error loading summary:', error);
-       updateSummaryUI({
-           total_students: 'Error',
-           completed: 'Error',
-           pending: 'Error',
-           completion_percentage: 'Error'
-       });
-   }
+        // Actualizar el select de evaluaciones
+        const filterQuiz = document.getElementById('filter-quiz');
+        filterQuiz.innerHTML = '<option value="">Todas las evaluaciones</option>';
+        result.data.forEach(eval => {
+            const option = document.createElement('option');
+            option.value = eval.name;
+            option.textContent = eval.name;
+            filterQuiz.appendChild(option);
+        });
+
+    } catch (error) {
+        console.error('Error loading evaluaciones:', error);
+        showError('Error al cargar las evaluaciones');
+    }
 }
 
-async function loadCourseUsers(courseId) {
-   try {
-       const response = await fetch(`/moddle/blocks/evaluaciones_seguimiento/ajax.php?action=users&courseid=${courseId}`, {
-           method: 'GET',
-           credentials: 'same-origin',
-           headers: {
-               'Accept': 'application/json',
-               'Cache-Control': 'no-cache'
-           }
-       });
+async function loadCourseSummary(courseId, evaluacionTipo = '') {
+    try {
+        let url = `/moddle/blocks/evaluaciones_seguimiento/ajax.php?action=summary&courseid=${courseId}`;
+        if (evaluacionTipo) {
+            url += `&eval_tipo=${encodeURIComponent(evaluacionTipo)}`;
+        }
 
-       if (!response.ok) {
-           throw new Error(`HTTP error! status: ${response.status}`);
-       }
+        const response = await fetch(url, {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache'
+            }
+        });
 
-       const result = await response.json();
-       if (!result.success) {
-           throw new Error(result.error || 'Error desconocido');
-       }
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
 
-       updateUsersTableUI(result.data);
-   } catch (error) {
-       console.error('Error loading users:', error);
-       showTableError('Error al cargar los datos de los usuarios');
-   }
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || 'Error desconocido');
+        }
+
+        updateSummaryUI(data.data);
+    } catch (error) {
+        console.error('Error loading summary:', error);
+        updateSummaryUI({
+            total_students: 'Error',
+            completed: 'Error',
+            pending: 'Error',
+            completion_percentage: 'Error'
+        });
+    }
 }
 
-function showLoadingState(courseSummary, loader) {
-   courseSummary.classList.remove('hidden');
-   
-   document.getElementById('total-students').textContent = '-';
-   document.getElementById('completed-count').textContent = '-';
-   document.getElementById('pending-count').textContent = '-';
-   document.getElementById('completion-percentage').textContent = '-';
-   
-   const tbody = document.getElementById('resultados-body');
-   tbody.innerHTML = '';
-   const loadingRow = document.createElement('tr');
-   loadingRow.innerHTML = `
-       <td colspan="6" class="text-center">
-           <div class="loader"></div>
-           <p>Cargando datos...</p>
-       </td>
-   `;
-   tbody.appendChild(loadingRow);
+async function loadCourseUsers(courseId, evaluacionTipo = '') {
+    try {
+        let url = `/moddle/blocks/evaluaciones_seguimiento/ajax.php?action=users&courseid=${courseId}`;
+        if (evaluacionTipo) {
+            url += `&eval_tipo=${encodeURIComponent(evaluacionTipo)}`;
+        }
+
+        const response = await fetch(url, {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || 'Error desconocido');
+        }
+
+        allUsers = result.data;
+        updateUsersTableUI(result.data);
+    } catch (error) {
+        console.error('Error loading users:', error);
+        showTableError('Error al cargar los datos de los usuarios');
+    }
+}
+
+function filterByStatus(status) {
+    if (!allUsers || !allUsers.length) return;
+
+    let filteredUsers = allUsers;
+    if (status) {
+        filteredUsers = allUsers.filter(user => user.estado_completacion === status);
+    }
+
+    updateUsersTableUI(filteredUsers);
+}
+
+function showLoadingState() {
+    document.getElementById('total-students').textContent = '-';
+    document.getElementById('completed-count').textContent = '-';
+    document.getElementById('pending-count').textContent = '-';
+    document.getElementById('completion-percentage').textContent = '-';
+    
+    const tbody = document.getElementById('resultados-body');
+    tbody.innerHTML = '';
+    const loadingRow = document.createElement('tr');
+    loadingRow.innerHTML = `
+        <td colspan="6" class="text-center">
+            <div class="loader"></div>
+            <p>Cargando datos...</p>
+        </td>
+    `;
+    tbody.appendChild(loadingRow);
 }
 
 function updateSummaryUI(data) {
-   if (!data) return;
+    if (!data) return;
 
-   document.getElementById('total-students').textContent = data.total_students || '0';
-   document.getElementById('completed-count').textContent = data.completed || '0';
-   document.getElementById('pending-count').textContent = data.pending || '0';
-   document.getElementById('completion-percentage').textContent = 
-       data.completion_percentage ? `${data.completion_percentage}%` : '0%';
+    document.getElementById('total-students').textContent = data.total_students || '0';
+    document.getElementById('completed-count').textContent = data.completed || '0';
+    document.getElementById('pending-count').textContent = data.pending || '0';
+    document.getElementById('completion-percentage').textContent = 
+        data.completion_percentage ? `${data.completion_percentage}%` : '0%';
 }
 
 function updateUsersTableUI(users) {
@@ -252,8 +266,6 @@ function updateUsersTableUI(users) {
         `;
         return;
     }
-
-    allUsers = users;
     
     const usersToShow = recordsPerPage === 0 ? users : users.slice(0, recordsPerPage);
     usersToShow.forEach(user => {
@@ -269,7 +281,7 @@ function updateUsersTableUI(users) {
         tr.innerHTML = `
             <td>${escapeHtml(user.firstname || '')}</td>
             <td>${escapeHtml(user.lastname || '')}</td>
-            <td>${escapeHtml(user.nombre_quiz || '')}</td>
+            <td>${escapeHtml(user.grupo || '')}</td>
             <td class="status-${statusClass}">${escapeHtml(status)}</td>
             <td>${escapeHtml(user.calificacion || '-')}</td>
             <td>${fecha_ultima_modificacion}</td>
@@ -287,42 +299,42 @@ function updateUsersTableUI(users) {
 }
 
 function showTableError(message) {
-   const tbody = document.getElementById('resultados-body');
-   tbody.innerHTML = `
-       <tr>
-           <td colspan="6" class="error-message text-center">
-               ${escapeHtml(message)}
-           </td>
-       </tr>
-   `;
+    const tbody = document.getElementById('resultados-body');
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="6" class="error-message text-center">
+                ${escapeHtml(message)}
+            </td>
+        </tr>
+    `;
 }
 
 function showError(message) {
-   const errorDiv = document.createElement('div');
-   errorDiv.className = 'error-message';
-   errorDiv.textContent = message;
-   
-   const container = document.getElementById('evaluaciones-container');
-   if (container.firstChild.classList && container.firstChild.classList.contains('error-message')) {
-       container.removeChild(container.firstChild);
-   }
-   container.insertBefore(errorDiv, container.firstChild);
-   
-   setTimeout(() => {
-       if (errorDiv.parentNode === container) {
-           errorDiv.remove();
-       }
-   }, 5000);
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error-message';
+    errorDiv.textContent = message;
+    
+    const container = document.getElementById('evaluaciones-container');
+    if (container.firstChild.classList && container.firstChild.classList.contains('error-message')) {
+        container.removeChild(container.firstChild);
+    }
+    container.insertBefore(errorDiv, container.firstChild);
+    
+    setTimeout(() => {
+        if (errorDiv.parentNode === container) {
+            errorDiv.remove();
+        }
+    }, 5000);
 }
 
 function escapeHtml(unsafe) {
-   if (unsafe === null || unsafe === undefined) return '';
-   
-   return unsafe
-       .toString()
-       .replace(/&/g, "&amp;")
-       .replace(/</g, "&lt;")
-       .replace(/>/g, "&gt;")
-       .replace(/"/g, "&quot;")
-       .replace(/'/g, "&#039;");
+    if (unsafe === null || unsafe === undefined) return '';
+    
+    return unsafe
+        .toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }

@@ -120,12 +120,6 @@ class block_evaluaciones_seguimiento extends block_base {
         
         $this->content->text .= '</div>';
 
-        // Scripts externos
-        $this->content->text .= '
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-        ';
 
         return $this->content;
     }
