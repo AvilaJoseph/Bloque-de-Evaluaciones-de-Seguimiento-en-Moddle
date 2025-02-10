@@ -22,9 +22,9 @@ try {
                             FROM {quiz} q
                             WHERE q.course = :courseid
                             AND (
-                                (LOWER(q.name) LIKE '%inducción%')
+                                (LOWER(q.name) LIKE '%evaluación de inducción%')
                                 OR 
-                                (LOWER(q.name) LIKE '%reinducción%')
+                                (LOWER(q.name) LIKE '%evaluación de reinducción%')
                             )
                             ORDER BY q.name ASC";
         
@@ -32,7 +32,6 @@ try {
         
         if (!empty($evaluaciones)) {
             foreach ($evaluaciones as $evaluacion) {
-                // Consulta para PLANTA
                 $sql_users = "SELECT 
                     u.firstname,
                     u.lastname,
@@ -93,89 +92,135 @@ try {
         }
     }
 
+    // Evaluaciones por curso predefinidas
+    $evaluaciones_curso = array(
+        'GENERALIDADES' => array(
+            'Evaluación de Inducción del Módulo de Generalidades'
+        ),
+        'TALENTO HUMANO' => array(
+            'Evaluación de Inducción del Submódulo Evaluación del desempeño ( EDL )',
+            'Evaluación de Inducción del Submódulo Novedades administrativas',
+            'Evaluación de Inducción del Submódulo Bienestar Social',
+            'Evaluación de Inducción del Submódulo de Capacitación',
+            'Evaluación de Inducción del Submódulo SSGT',
+            'Evaluación de Inducción del Comités',
+            'Evaluación de Inducción del Módulo de Talento Humano'
+        ),
+        'PROCESOS' => array(
+            'Evaluación de Inducción del Módulo de Procesos'
+        ),
+        'HERRAMIENTAS TECNOLÓGICAS' => array(
+            'Evaluación de Inducción del Submódulo Ophelia',
+            'Evaluación de Inducción del Módulo de Herramientas Tecnológicas'
+        ),
+        'SIGC' => array(
+            'Evaluación de Inducción del Módulo de SIGC'
+        ),
+        'SEGURIDAD INFORMÁTICA' => array(
+            'Evaluación de Inducción del Módulo de Seguridad Informática'
+        ),
+        'ENTÉRATE' => array(
+            'Evaluación de Inducción del Submódulo Subdirección desarrollo sostenible',
+            'Evaluación de Inducción del Submódulo Subdirección gestión comercial',
+            'Evaluación de Inducción del Submódulo Oficina Asesora planeación',
+            'Evaluación de Inducción del Submódulo Secretaria general'
+        )
+    );
+
     if ($format === 'pdf') {
         $pdf = new pdf();
         $pdf->setPrintHeader(false);
         $pdf->setPrintFooter(false);
         $pdf->SetCreator('Moodle');
         $pdf->SetTitle('Evaluaciones - Todos los cursos');
-    
-        foreach ($all_course_results as $course_name => $course_data) {
+
+        // Procesar para cada tipo de usuario
+        foreach (['PLANTA', 'CONTRATISTA'] as $tipo_usuario) {
             $pdf->AddPage('L');
             $pdf->SetFont('helvetica', 'B', 16);
-            $pdf->SetFillColor(51, 122, 183); // Azul
-            $pdf->SetTextColor(255, 255, 255); // Texto blanco
-            $pdf->Cell(0, 10, $course_name, 1, 1, 'C', true);
+            $pdf->SetFillColor(51, 122, 183);
+            $pdf->SetTextColor(255, 255, 255);
+            $pdf->Cell(0, 10, "REPORTE DE EVALUACIONES - " . $tipo_usuario, 1, 1, 'C', true);
             
-            foreach ($course_data as $user_type => $evaluaciones) {
-                $pdf->SetFont('helvetica', 'B', 14);
-                $pdf->SetFillColor(92, 184, 92); // Verde
-                $pdf->SetTextColor(255, 255, 255);
-                $pdf->Ln(5);
-                $pdf->Cell(0, 8, "Grupo: " . $user_type, 1, 1, 'C', true);
-                
-                foreach ($evaluaciones as $quiz_name => $quiz_results) {
-                    $pdf->SetFont('helvetica', 'B', 12);
-                    $pdf->SetFillColor(240, 240, 240); // Gris claro
-                    $pdf->SetTextColor(51, 51, 51); // Texto oscuro
-                    $pdf->Ln(3);
-                    $pdf->Cell(0, 8, $quiz_name, 1, 1, 'L', true);
-                    
-                    // Headers
-                    $w = array(35, 35, 25, 25, 35, 35);
-                    $headers = array('Nombre', 'Apellido', 'Grupo', 'Estado', 'Calificación', 'Fecha');
-                    
-                    $pdf->SetFillColor(217, 237, 247); // Azul claro
-                    $pdf->SetFont('helvetica', 'B', 9);
-                    
-                    foreach($headers as $i => $header) {
-                        $pdf->Cell($w[$i], 7, $header, 1, 0, 'C', true);
+            // Obtener todos los usuarios únicos
+            $usuarios = array();
+            foreach ($all_course_results as $course_data) {
+                if (isset($course_data[$tipo_usuario])) {
+                    foreach ($course_data[$tipo_usuario] as $quiz_results) {
+                        foreach ($quiz_results as $result) {
+                            $usuario_key = $result->firstname . '_' . $result->lastname;
+                            if (!isset($usuarios[$usuario_key])) {
+                                $usuarios[$usuario_key] = array(
+                                    'firstname' => $result->firstname,
+                                    'lastname' => $result->lastname,
+                                    'grupo' => $result->grupo
+                                );
+                            }
+                        }
                     }
-                    $pdf->Ln();
-                    
-                    // Datos
-                    $pdf->SetFont('helvetica', '', 9);
-                    $pdf->SetFillColor(255, 255, 255);
-                    $pdf->SetTextColor(51, 51, 51);
-                    
-                    $fill = false;
-                    foreach ($quiz_results as $row) {
-                        $fecha = date('d/m/Y H:i', $row->fecha_ultima_modificacion);
-                        
-                        $fill = !$fill;
-                        $fillColor = $fill ? array(249, 249, 249) : array(255, 255, 255);
-                        $pdf->SetFillColor($fillColor[0], $fillColor[1], $fillColor[2]);
-                        
-                        $pdf->Cell($w[0], 6, $row->firstname, 1, 0, 'L', true);
-                        $pdf->Cell($w[1], 6, $row->lastname, 1, 0, 'L', true);
-                        $pdf->Cell($w[2], 6, $row->grupo, 1, 0, 'C', true);
-                        
-                        // Color para el estado
-                        $estadoColor = $row->estado_completacion === 'completado' ? 
-                            array(92, 184, 92) : array(217, 83, 79);
-                        $pdf->SetTextColor($estadoColor[0], $estadoColor[1], $estadoColor[2]);
-                        $pdf->Cell($w[3], 6, $row->estado_completacion, 1, 0, 'C', true);
-                        $pdf->SetTextColor(51, 51, 51);
-                        
-                        $pdf->Cell($w[4], 6, $row->calificacion, 1, 0, 'C', true);
-                        $pdf->Cell($w[5], 6, $fecha, 1, 0, 'C', true);
-                        $pdf->Ln();
-                    }
-                    
-                    // Resumen
-                    $total = count($quiz_results);
-                    $completados = count(array_filter($quiz_results, function($r) { 
-                        return $r->estado_completacion === 'completado'; 
-                    }));
-                    $pendientes = $total - $completados;
-                    
-                    $pdf->Ln(2);
-                    $pdf->SetFont('helvetica', 'B', 9);
-                    $pdf->SetFillColor(217, 237, 247);
-                    $pdf->Cell(0, 6, "Resumen: Total: $total, Completados: $completados, Pendientes: $pendientes", 1, 1, 'L', true);
-                    $pdf->Ln(3);
                 }
             }
+
+            foreach ($evaluaciones_curso as $curso => $evaluaciones) {
+                $pdf->SetFont('helvetica', 'B', 14);
+                $pdf->SetFillColor(92, 184, 92);
+                $pdf->SetTextColor(255, 255, 255);
+                $pdf->Ln(5);
+                $pdf->Cell(0, 8, $curso, 1, 1, 'C', true);
+                
+                // Headers
+                $w = array(60, 25);
+                $evaluacion_width = 180 / count($evaluaciones);
+                
+                $pdf->SetFont('helvetica', 'B', 9);
+                $pdf->SetFillColor(217, 237, 247);
+                
+                // Headers principales
+                $pdf->Cell($w[0], 7, 'Nombre Completo', 1, 0, 'C', true);
+                $pdf->Cell($w[1], 7, 'Grupo', 1, 0, 'C', true);
+                foreach ($evaluaciones as $evaluacion) {
+                    $pdf->Cell($evaluacion_width, 7, $evaluacion, 1, 0, 'C', true);
+                }
+                $pdf->Ln();
+                
+                // Datos
+                $pdf->SetFont('helvetica', '', 9);
+                $pdf->SetFillColor(255, 255, 255);
+                $pdf->SetTextColor(51, 51, 51);
+                
+                foreach ($usuarios as $usuario_key => $usuario) {
+                    $pdf->Cell($w[0], 6, $usuario['firstname'] . ' ' . $usuario['lastname'], 1, 0, 'L');
+                    $pdf->Cell($w[1], 6, $usuario['grupo'], 1, 0, 'C');
+                    
+                    foreach ($evaluaciones as $evaluacion) {
+                        $estado = 'pendiente';
+                        $estadoColor = array(217, 83, 79);
+                        
+                        foreach ($all_course_results as $course_data) {
+                            if (isset($course_data[$tipo_usuario])) {
+                                foreach ($course_data[$tipo_usuario] as $quiz_name => $quiz_results) {
+                                    if ($quiz_name === $evaluacion) {
+                                        foreach ($quiz_results as $result) {
+                                            if ($result->firstname . '_' . $result->lastname === $usuario_key 
+                                                && $result->estado_completacion === 'completado') {
+                                                $estado = 'completado';
+                                                $estadoColor = array(92, 184, 92);
+                                                break 3;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        $pdf->SetTextColor($estadoColor[0], $estadoColor[1], $estadoColor[2]);
+                        $pdf->Cell($evaluacion_width, 6, $estado, 1, 0, 'C');
+                    }
+                    $pdf->Ln();
+                }
+                $pdf->Ln(3);
+            }
+            $pdf->Ln(5);
         }
         
         $pdf->Output('Informe_General_Evaluaciones.pdf', 'D');
@@ -187,89 +232,124 @@ try {
         $workbook = new MoodleExcelWorkbook('Informe_General_Evaluaciones.xlsx');
         $workbook->send('Informe_General_Evaluaciones.xlsx');
         
-        foreach ($all_course_results as $course_name => $course_data) {
-            $safe_sheet_name = clean_filename(substr($course_name, 0, 25));
-            $safe_sheet_name = preg_replace('/[^a-zA-Z0-9_]/', '', $safe_sheet_name);
-            $worksheet = $workbook->add_worksheet($safe_sheet_name);
+        // Definir formatos
+        $formato_titulo = $workbook->add_format();
+        $formato_titulo->set_bold();
+        $formato_titulo->set_size(12);
+        $formato_titulo->set_align('center');
+        $formato_titulo->set_text_wrap();
+        $formato_titulo->set_border(1);
+        
+        $formato_header = $workbook->add_format();
+        $formato_header->set_bold();
+        $formato_header->set_bg_color('silver');
+        $formato_header->set_align('center');
+        $formato_header->set_text_wrap();
+        $formato_header->set_border(1);
+        
+        $formato_celda = $workbook->add_format();
+        $formato_celda->set_align('left');
+        $formato_celda->set_text_wrap();
+        $formato_celda->set_border(1);
+
+        $formato_pendiente = $workbook->add_format();
+        $formato_pendiente->set_bg_color('#FFC7CE');
+        $formato_pendiente->set_align('center');
+        $formato_pendiente->set_border(1);
+
+        $formato_completado = $workbook->add_format();
+        $formato_completado->set_bg_color('#C6EFCE');
+        $formato_completado->set_align('center');
+        $formato_completado->set_border(1);
+
+        // Procesar cada tipo de usuario
+        foreach (['PLANTA', 'CONTRATISTA'] as $tipo_usuario) {
+            $worksheet = $workbook->add_worksheet($tipo_usuario);
             
             // Configurar anchos de columna
-            $worksheet->set_column(0, 0, 25);  // Nombre
-            $worksheet->set_column(1, 1, 25);  // Apellido
-            $worksheet->set_column(2, 2, 15);  // Grupo
-            $worksheet->set_column(3, 3, 15);  // Estado
-            $worksheet->set_column(4, 4, 20);  // Calificación
-            $worksheet->set_column(5, 5, 20);  // Fecha
+            $worksheet->set_column(0, 0, 35);
+            $worksheet->set_column(1, 1, 20);
+            $worksheet->set_row(0, 30);
             
-            // Formatos
-            $formato_titulo = $workbook->add_format();
-            $formato_titulo->set_bold();
-            $formato_titulo->set_size(12);
-            $formato_titulo->set_align('center');
-            $formato_titulo->set_text_wrap();
+            // Headers principales
+            $col = 0;
+            $worksheet->write(0, $col++, 'FUNCIONARIOS', $formato_titulo);
+            $worksheet->write(0, $col++, 'VINCULACION', $formato_titulo);
             
-            $formato_header = $workbook->add_format();
-            $formato_header->set_bold();
-            $formato_header->set_bg_color('silver');
-            $formato_header->set_align('center');
-            $formato_header->set_text_wrap();
-            
-            $formato_celda = $workbook->add_format();
-            $formato_celda->set_align('left');
-            $formato_celda->set_text_wrap();
-            
-            // Nombre del curso
-            $worksheet->write(0, 0, $course_name, $formato_titulo);
-            $worksheet->merge_cells(0, 0, 0, 5);
-            $worksheet->set_row(0, 30); // Altura para el título
-            
-            $current_row = 2;
-            
-            foreach (['PLANTA', 'CONTRATISTA'] as $user_type) {
-                if (isset($course_data[$user_type])) {
-                    $worksheet->write($current_row, 0, "Grupo: " . $user_type, $formato_titulo);
-                    $worksheet->merge_cells($current_row, 0, $current_row, 5);
-                    $worksheet->set_row($current_row, 25);
-                    $current_row += 2;
+            // Escribir headers de cursos y evaluaciones
+            $start_col = $col;
+            foreach ($evaluaciones_curso as $curso => $evaluaciones) {
+                if (!empty($evaluaciones)) {
+                    $end_col = $start_col + count($evaluaciones) - 1;
+                    $worksheet->merge_cells(0, $start_col, 0, $end_col);
+                    $worksheet->write(0, $start_col, $curso, $formato_titulo);
                     
-                    foreach ($course_data[$user_type] as $quiz_name => $quiz_results) {
-                        $worksheet->write($current_row, 0, $quiz_name, $formato_titulo);
-                        $worksheet->merge_cells($current_row, 0, $current_row, 5);
-                        $worksheet->set_row($current_row, 25);
-                        $current_row += 2;
-                        
-                        $headers = array('Nombre', 'Apellido', 'Grupo', 'Estado', 'Calificación', 'Fecha');
-                        foreach ($headers as $col => $header) {
-                            $worksheet->write($current_row, $col, $header, $formato_header);
-                        }
-                        $worksheet->set_row($current_row, 20);
-                        $current_row++;
-                        
-                        foreach ($quiz_results as $result) {
-                            $fecha = date('d/m/Y H:i', $result->fecha_ultima_modificacion);
-                            
-                            $worksheet->write($current_row, 0, $result->firstname, $formato_celda);
-                            $worksheet->write($current_row, 1, $result->lastname, $formato_celda);
-                            $worksheet->write($current_row, 2, $result->grupo, $formato_celda);
-                            $worksheet->write($current_row, 3, $result->estado_completacion, $formato_celda);
-                            $worksheet->write($current_row, 4, $result->calificacion, $formato_celda);
-                            $worksheet->write($current_row, 5, $fecha, $formato_celda);
-                            $current_row++;
-                        }
-                        
-                        $total = count($quiz_results);
-                        $completados = count(array_filter($quiz_results, function($r) { 
-                            return $r->estado_completacion === 'completado'; 
-                        }));
-                        $pendientes = $total - $completados;
-                        
-                        $current_row++;
-                        $formato_resumen = $workbook->add_format();
-                        $formato_resumen->set_bold();
-                        $formato_resumen->set_align('left');
-                        $worksheet->write($current_row, 0, "Resumen: Total: $total, Completados: $completados, Pendientes: $pendientes", $formato_resumen);
-                        $current_row += 2;
+                    foreach ($evaluaciones as $i => $evaluacion) {
+                        $worksheet->write(1, $start_col + $i, $evaluacion, $formato_header);
+                        $worksheet->set_column($start_col + $i, $start_col + $i, 15);
                     }
-                    $current_row += 1;
+                    $start_col = $end_col + 1;
+                }
+            }
+
+            // Obtener usuarios únicos
+            $usuarios = array();
+            foreach ($all_course_results as $course_data) {
+                if (isset($course_data[$tipo_usuario])) {
+                    foreach ($course_data[$tipo_usuario] as $quiz_results) {
+                        foreach ($quiz_results as $result) {
+                            $usuario_key = $result->firstname . '_' . $result->lastname;
+                            if (!isset($usuarios[$usuario_key])) {
+                                $usuarios[$usuario_key] = array(
+                                    'firstname' => $result->firstname,
+                                    'lastname' => $result->lastname,
+                                    'grupo' => $result->grupo
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Escribir datos
+            $current_row = 2;
+            $usuarios_procesados = array();
+
+            foreach ($usuarios as $usuario_key => $usuario) {
+                $worksheet->write($current_row, 0, $usuario['firstname'] . ' ' . $usuario['lastname'], $formato_celda);
+                $worksheet->write($current_row, 1, $usuario['grupo'], $formato_celda);
+                
+                $col = 2;
+                foreach ($evaluaciones_curso as $curso => $evaluaciones) {
+                    foreach ($evaluaciones as $evaluacion) {
+                        $worksheet->write($current_row, $col, 'PENDIENTE', $formato_pendiente);
+                        $col++;
+                    }
+                }
+                
+                $usuarios_procesados[$usuario_key] = $current_row;
+                $current_row++;
+            }
+
+            // Actualizar estados completados
+            foreach ($all_course_results as $course_data) {
+                if (isset($course_data[$tipo_usuario])) {
+                    foreach ($course_data[$tipo_usuario] as $quiz_name => $quiz_results) {
+                        foreach ($quiz_results as $result) {
+                            $usuario_key = $result->firstname . '_' . $result->lastname;
+                            if (isset($usuarios_procesados[$usuario_key])) {
+                                $col = 2;
+                                foreach ($evaluaciones_curso as $curso => $evaluaciones) {
+                                    foreach ($evaluaciones as $evaluacion) {
+                                        if ($evaluacion === $result->nombre_quiz && $result->estado_completacion === 'completado') {
+                                            $worksheet->write($usuarios_procesados[$usuario_key], $col, 'completado', $formato_completado);
+                                        }
+                                        $col++;
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -277,9 +357,9 @@ try {
         $workbook->close();
         exit;
     }
-
 } catch (Exception $e) {
     header('HTTP/1.1 500 Internal Server Error');
     echo "Error: " . $e->getMessage();
     die();
 }
+?>
