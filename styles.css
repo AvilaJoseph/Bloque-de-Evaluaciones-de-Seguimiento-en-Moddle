@@ -3,6 +3,9 @@
     flex-wrap: wrap;
     gap: 0.5rem;
     margin-bottom: 1rem;
+    width: 100%;
+    padding: 0.5rem;
+    box-sizing: border-box;
 }
 
 .curso-btn {
@@ -10,7 +13,18 @@
     border: 1px solid #ddd;
     border-radius: 0.25rem;
     background: #429beb;
+    color: white;
     cursor: pointer;
+    font-size: 0.9rem;
+    line-height: 1.2;
+    text-align: center;
+    flex: 1 1 auto;
+    min-width: 150px;
+    max-width: 100%;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    transition: all 0.2s ease;
 }
 
 .curso-btn.active {
@@ -19,12 +33,45 @@
     border-color: #265281;
 }
 
+/* Ajustes responsivos para los botones */
+@media (max-width: 992px) {
+    .curso-btn {
+        min-width: calc(50% - 0.5rem);
+        font-size: 0.85rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .curso-buttons {
+        gap: 0.4rem;
+        padding: 0.4rem;
+    }
+
+    .curso-btn {
+        min-width: 100%;
+        padding: 0.75rem 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .curso-buttons {
+        gap: 0.3rem;
+        padding: 0.3rem;
+    }
+
+    .curso-btn {
+        font-size: 0.8rem;
+        padding: 0.6rem 0.8rem;
+    }
+}
+
 /* Nuevas cards de estadísticas */
 .stats-cards {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 1rem;
     margin: 1.5rem 0;
+    width: 100%;
 }
 
 .stat-card {
@@ -55,7 +102,6 @@
     flex: 1;
 }
 
-/* Mantener consistencia con tus estilos existentes */
 .stat-card .stat-value {
     font-size: 1.75rem;
     font-weight: bold;
@@ -98,23 +144,30 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
+/* Control de filtros */
 .filter-controls {
     display: flex;
+    flex-wrap: wrap;
     gap: 1rem;
     margin-bottom: 1rem;
+    width: 100%;
 }
 
 .filter-controls select {
+    flex: 1;
     min-width: 200px;
+    max-width: 100%;
 }
 
 .resultados-table {
+    width: 100%;
     overflow-x: auto;
 }
 
 .resultados-table table {
     width: 100%;
     border-collapse: collapse;
+    min-width: 600px;
 }
 
 .resultados-table th,
@@ -142,6 +195,35 @@
     background: #f8f9fa;
 }
 
+/* Controles de tabla y exportación */
+.table-controls,
+.export-controls {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    width: 100%;
+}
+
+.table-controls select {
+    width: auto;
+    max-width: 100%;
+}
+
+.export-controls button {
+    background: #429beb;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.export-controls button:hover {
+    background: #265281;
+}
+
+/* Loader y mensajes de error */
 .loader {
     border: 3px solid #f3f3f3;
     border-radius: 50%;
@@ -150,6 +232,17 @@
     height: 20px;
     animation: spin 1s linear infinite;
     margin: 0 auto;
+}
+
+.loader-small {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 0.5rem;
 }
 
 @keyframes spin {
@@ -164,21 +257,50 @@
     padding: 0.5rem;
     margin-bottom: 1rem;
     border-radius: 0.25rem;
+    width: 100%;
 }
 
-.export-controls {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1rem;
+/* Estilos responsivos */
+@media (max-width: 768px) {
+    .stats-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .filter-controls {
+        flex-direction: column;
+    }
+    
+    .filter-controls select {
+        width: 100%;
+        min-width: 100%;
+    }
 }
 
-.loader-small {
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    border: 2px solid #f3f3f3;
-    border-top: 2px solid #3498db;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-right: 0.5rem;
+@media (max-width: 480px) {
+    .curso-buttons {
+        flex-direction: column;
+    }
+
+    .curso-btn {
+        width: 100%;
+        text-align: left;
+    }
+
+    .export-controls button,
+    .table-controls select {
+        width: 100%;
+    }
+    
+    .stats-cards {
+        gap: 0.75rem;
+    }
+
+    .stat-card {
+        padding: 1rem;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+    }
 }
+
