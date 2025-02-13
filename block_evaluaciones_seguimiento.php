@@ -42,24 +42,38 @@ class block_evaluaciones_seguimiento extends block_base {
         }
         $this->content->text .= '</div>';
 
+        // Nueva sección de estadísticas en cards
+        $this->content->text .= '
+        <div class="stats-cards mb-4">
+            <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-content">
+                    <div class="stat-value" id="total-students">-</div>
+                    <div class="stat-label">Total Estudiantes</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">✅</div>
+                <div class="stat-content">
+                    <div class="stat-value" id="completed-count">-</div>
+                    <div class="stat-label">Evaluaciones Completadas</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⏳</div>
+                <div class="stat-content">
+                    <div class="stat-value" id="pending-count">-</div>
+                    <div class="stat-label">Evaluaciones Pendientes</div>
+                </div>
+            </div>
+        </div>';
+
         // Resumen
         $this->content->text .= '
         <div id="course-summary" class="course-summary hidden">
             <div class="stats-grid">
                 <div class="stat-box">
-                    <span class="stat-label">Total Estudiantes</span>
-                    <span class="stat-value" id="total-students">-</span>
-                </div>
-                <div class="stat-box">
-                    <span class="stat-label">Completados</span>
-                    <span class="stat-value" id="completed-count">-</span>
-                </div>
-                <div class="stat-box">
-                    <span class="stat-label">Pendientes</span>
-                    <span class="stat-value" id="pending-count">-</span>
-                </div>
-                <div class="stat-box">
-                <span class="stat-label">% Completado</span>
+                    <span class="stat-label">% Completado</span>
                     <span class="stat-value" id="completion-percentage">-</span>
                 </div>
             </div>
@@ -78,14 +92,11 @@ class block_evaluaciones_seguimiento extends block_base {
             </select>
         </div>';
 
-        // Botones de exportación
+        // Botón de exportación (solo Excel)
         $this->content->text .= '
             <div class="export-controls mb-3">
                 <button id="export-excel" class="btn btn-secondary">
                     <i class="fa fa-file-excel-o"></i> Exportar a Excel
-                </button>
-                <button id="export-pdf" class="btn btn-secondary">
-                    <i class="fa fa-file-pdf-o"></i> Exportar a PDF
                 </button>
             </div>';
 
@@ -120,7 +131,6 @@ class block_evaluaciones_seguimiento extends block_base {
         </div>';
         
         $this->content->text .= '</div>';
-
 
         return $this->content;
     }

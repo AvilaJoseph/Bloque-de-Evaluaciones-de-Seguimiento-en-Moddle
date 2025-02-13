@@ -5,16 +5,42 @@ let currentCourseId = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Script initialized');
+    
+    // Verificar que existan todos los elementos necesarios
+    const requiredElements = {
+        'records-per-page': document.getElementById('records-per-page'),
+        'filter-quiz': document.getElementById('filter-quiz'),
+        'filter-status': document.getElementById('filter-status'),
+        'export-excel': document.getElementById('export-excel'),
+        'resultados-body': document.getElementById('resultados-body'),
+        'total-students': document.getElementById('total-students'),
+        'completed-count': document.getElementById('completed-count'),
+        'pending-count': document.getElementById('pending-count'),
+        'completion-percentage': document.getElementById('completion-percentage'),
+        'evaluaciones-container': document.getElementById('evaluaciones-container')
+    };
+
+    // Verificar si algún elemento requerido no existe
+    const missingElements = Object.entries(requiredElements)
+        .filter(([key, element]) => !element)
+        .map(([key]) => key);
+
+    if (missingElements.length > 0) {
+        console.error('Elementos faltantes:', missingElements);
+        return; // Detener la inicialización si faltan elementos
+    }
+
+    // Inicializar el bloque y los event listeners
     initializeBlock();
     
-    // Agregar listener para el cambio de registros por página
-    document.getElementById('records-per-page').addEventListener('change', function(e) {
+    // Event listener para registros por página
+    requiredElements['records-per-page'].addEventListener('change', function(e) {
         recordsPerPage = parseInt(e.target.value);
         updateUsersTableUI(allUsers);
     });
 
-    // Agregar listener para el filtro de evaluaciones
-    document.getElementById('filter-quiz').addEventListener('change', async function(e) {
+    // Event listener para filtro de evaluaciones
+    requiredElements['filter-quiz'].addEventListener('change', async function(e) {
         const evaluacionTipo = e.target.value;
         if (currentCourseId) {
             showLoadingState();
@@ -25,56 +51,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Agregar listener para el filtro de estado
-    document.getElementById('filter-status').addEventListener('change', function(e) {
+    // Event listener para filtro de estado
+    requiredElements['filter-status'].addEventListener('change', function(e) {
         filterByStatus(e.target.value);
     });
 
-    // Add export button listeners
-    document.getElementById('export-excel').addEventListener('click', async function() {
+    // Event listener para exportar a Excel
+    requiredElements['export-excel'].addEventListener('click', async function() {
         await exportFile('excel');
     });
-
-    document.getElementById('export-pdf').addEventListener('click', async function() {
-        await exportFile('pdf');
-    });
 });
-
-async function exportFile(format) {
-    try {
-        const exportBtn = document.getElementById(`export-${format}`);
-        if (!exportBtn) {
-            showError('Botón de exportación no encontrado');
-            return;
-        }
-
-        const btnText = exportBtn.innerHTML;
-        exportBtn.innerHTML = '<span class="loader-small"></span> Exportando...';
-        exportBtn.disabled = true;
-
-        try {
-            window.location.href = `/moddle/blocks/evaluaciones_seguimiento/export.php?format=${format}`;
-        } finally {
-            setTimeout(() => {
-                exportBtn.innerHTML = btnText;
-                exportBtn.disabled = false;
-            }, 2000);
-        }
-    } catch (error) {
-        console.error('Error en exportación:', error);
-        showError(`Error al exportar: ${error.message}`);
-        
-        const exportBtn = document.getElementById(`export-${format}`);
-        if (exportBtn) {
-            exportBtn.innerHTML = btnText;
-            exportBtn.disabled = false;
-        }
-    }
-}
 
 function initializeBlock() {
     const buttons = document.querySelectorAll('.curso-btn');
     
+    if (!buttons || buttons.length === 0) {
+        console.error('No se encontraron botones de curso');
+        return;
+    }
+
     buttons.forEach(button => {
         button.addEventListener('click', async function() {
             try {
@@ -102,9 +97,34 @@ function initializeBlock() {
     });
 }
 
+async function exportFile(format) {
+    const exportBtn = document.getElementById('export-excel');
+    if (!exportBtn) return;
+
+    const btnText = exportBtn.innerHTML;
+    try {
+        exportBtn.innerHTML = '<span class="loader-small"></span> Exportando...';
+        exportBtn.disabled = true;
+
+        window.location.href = `/moddle/blocks/evaluaciones_seguimiento/export.php?format=${format}`;
+        
+        setTimeout(() => {
+            exportBtn.innerHTML = btnText;
+            exportBtn.disabled = false;
+        }, 2000);
+    } catch (error) {
+        console.error('Error en exportación:', error);
+        showError(`Error al exportar: ${error.message}`);
+        exportBtn.innerHTML = btnText;
+        exportBtn.disabled = false;
+    }
+}
+
+// ... (resto de las funciones permanecen igual)
+
 async function loadEvaluaciones(courseId) {
     try {
-        const response = await fetch(`/moddle/blocks/evaluaciones_seguimiento/ajax.php?action=evaluaciones&courseid=${courseId}`, {  // Cambiado de 'get_evaluaciones' a 'evaluaciones'
+        const response = await fetch(`/moddle/blocks/evaluaciones_seguimiento/ajax.php?action=evaluaciones&courseid=${courseId}`, {
             method: 'GET',
             credentials: 'same-origin',
             headers: {
@@ -122,8 +142,9 @@ async function loadEvaluaciones(courseId) {
             throw new Error(result.error || 'Error desconocido');
         }
 
-        // Actualizar el select de evaluaciones
         const filterQuiz = document.getElementById('filter-quiz');
+        if (!filterQuiz) return;
+
         filterQuiz.innerHTML = '<option value="">Todas las evaluaciones</option>';
         result.data.forEach(eval => {
             const option = document.createElement('option');
@@ -175,6 +196,53 @@ async function loadCourseSummary(courseId, evaluacionTipo = '') {
     }
 }
 
+function showLoadingState() {
+    const elements = {
+        'total-students': document.getElementById('total-students'),
+        'completed-count': document.getElementById('completed-count'),
+        'pending-count': document.getElementById('pending-count'),
+        'completion-percentage': document.getElementById('completion-percentage'),
+        'resultados-body': document.getElementById('resultados-body')
+    };
+
+    // Actualizar estado de carga en las cards
+    Object.entries(elements).forEach(([id, element]) => {
+        if (element && id !== 'resultados-body') {
+            element.textContent = '-';
+        }
+    });
+    
+    if (elements['resultados-body']) {
+        elements['resultados-body'].innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center">
+                    <div class="loader"></div>
+                    <p>Cargando datos...</p>
+                </td>
+            </tr>
+        `;
+    }
+}
+
+function updateSummaryUI(data) {
+    if (!data) return;
+
+    const elements = {
+        'total-students': document.getElementById('total-students'),
+        'completed-count': document.getElementById('completed-count'),
+        'pending-count': document.getElementById('pending-count'),
+        'completion-percentage': document.getElementById('completion-percentage')
+    };
+
+    // Actualizar las cards de estadísticas
+    if (elements['total-students']) elements['total-students'].textContent = data.total_students || '0';
+    if (elements['completed-count']) elements['completed-count'].textContent = data.completed || '0';
+    if (elements['pending-count']) elements['pending-count'].textContent = data.pending || '0';
+    if (elements['completion-percentage']) {
+        elements['completion-percentage'].textContent = data.completion_percentage ? `${data.completion_percentage}%` : '0%';
+    }
+}
+
 async function loadCourseUsers(courseId, evaluacionTipo = '') {
     try {
         let url = `/moddle/blocks/evaluaciones_seguimiento/ajax.php?action=users&courseid=${courseId}`;
@@ -219,36 +287,10 @@ function filterByStatus(status) {
     updateUsersTableUI(filteredUsers);
 }
 
-function showLoadingState() {
-    document.getElementById('total-students').textContent = '-';
-    document.getElementById('completed-count').textContent = '-';
-    document.getElementById('pending-count').textContent = '-';
-    document.getElementById('completion-percentage').textContent = '-';
-    
-    const tbody = document.getElementById('resultados-body');
-    tbody.innerHTML = '';
-    const loadingRow = document.createElement('tr');
-    loadingRow.innerHTML = `
-        <td colspan="6" class="text-center">
-            <div class="loader"></div>
-            <p>Cargando datos...</p>
-        </td>
-    `;
-    tbody.appendChild(loadingRow);
-}
-
-function updateSummaryUI(data) {
-    if (!data) return;
-
-    document.getElementById('total-students').textContent = data.total_students || '0';
-    document.getElementById('completed-count').textContent = data.completed || '0';
-    document.getElementById('pending-count').textContent = data.pending || '0';
-    document.getElementById('completion-percentage').textContent = 
-        data.completion_percentage ? `${data.completion_percentage}%` : '0%';
-}
-
 function updateUsersTableUI(users) {
     const tbody = document.getElementById('resultados-body');
+    if (!tbody) return;
+
     tbody.innerHTML = '';
     
     if (!users || !Array.isArray(users) || users.length === 0) {
@@ -293,6 +335,8 @@ function updateUsersTableUI(users) {
 
 function showTableError(message) {
     const tbody = document.getElementById('resultados-body');
+    if (!tbody) return;
+
     tbody.innerHTML = `
         <tr>
             <td colspan="6" class="error-message text-center">
@@ -303,14 +347,18 @@ function showTableError(message) {
 }
 
 function showError(message) {
+    const container = document.getElementById('evaluaciones-container');
+    if (!container) return;
+
     const errorDiv = document.createElement('div');
     errorDiv.className = 'error-message';
     errorDiv.textContent = message;
     
-    const container = document.getElementById('evaluaciones-container');
-    if (container.firstChild.classList && container.firstChild.classList.contains('error-message')) {
+    if (container.firstChild && container.firstChild.classList && 
+        container.firstChild.classList.contains('error-message')) {
         container.removeChild(container.firstChild);
     }
+    
     container.insertBefore(errorDiv, container.firstChild);
     
     setTimeout(() => {

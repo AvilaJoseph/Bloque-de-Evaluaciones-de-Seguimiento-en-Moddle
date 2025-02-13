@@ -9,14 +9,79 @@
     padding: 0.5rem 1rem;
     border: 1px solid #ddd;
     border-radius: 0.25rem;
-    background: white;
+    background: #429beb;
     cursor: pointer;
 }
 
 .curso-btn.active {
-    background: #007bff;
+    background: #265281;
     color: white;
-    border-color: #0056b3;
+    border-color: #265281;
+}
+
+/* Nuevas cards de estadísticas */
+.stats-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 1px solid #ddd;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.stat-icon {
+    font-size: 2rem;
+    margin-right: 1rem;
+    padding: 1rem;
+    border-radius: 50%;
+    background: #f8f9fa;
+}
+
+.stat-content {
+    flex: 1;
+}
+
+/* Mantener consistencia con tus estilos existentes */
+.stat-card .stat-value {
+    font-size: 1.75rem;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 0.25rem;
+}
+
+.stat-card .stat-label {
+    color: #666;
+    font-size: 0.875rem;
+}
+
+/* Colores específicos para cada card */
+.stat-card:nth-child(1) .stat-icon {
+    color: #007bff;
+    background: #e7f1ff;
+}
+
+.stat-card:nth-child(2) .stat-icon {
+    color: #28a745;
+    background: #e8f5e9;
+}
+
+.stat-card:nth-child(3) .stat-icon {
+    color: #dc3545;
+    background: #fff5f5;
 }
 
 .stats-grid {
@@ -31,19 +96,6 @@
     padding: 1rem;
     border-radius: 0.5rem;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.stat-label {
-    display: block;
-    font-size: 0.875rem;
-    color: #666;
-}
-
-.stat-value {
-    display: block;
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #333;
 }
 
 .filter-controls {
